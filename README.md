@@ -1,4 +1,4 @@
-```markdown
+
 EpiRing — AI-Powered Multimodal Wearable for Early Seizure-Risk Warning
 
 **Smart India Hackathon 2026 | Team NeuralNests | Team ID 342**
@@ -101,4 +101,4 @@ EpiRing/
 
 EpiRing is an assistive early-warning device. It does not replace clinical diagnosis or EEG monitoring.
  
-```
+
