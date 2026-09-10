@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seizure Risk Monitor — Personalized Multimodal Wearable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e12;
+    --panel:#11161c;
+    --panel-alt:#161d25;
+    --hairline:#232c35;
+    --text:#e8edf2;
+    --muted:#7c8894;
+    --muted-dim:#4d5760;
+    --normal:#34d9a0;
+    --normal-dim:#1c4f42;
+    --elevated:#f2b84b;
+    --elevated-dim:#5a4823;
+    --warning:#ff5c5c;
+    --warning-dim:#5c2323;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  body{
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(52,217,160,0.05), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(255,92,92,0.04), transparent 40%);
+  }
+
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:20px 24px 64px;
+  }
+
+  /* ---------- Top status bar ---------- */
+  .statusbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    padding:16px 20px;
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    margin-bottom:18px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .brand-mark{
+    width:34px; height:34px;
+    border-radius:8px;
+    background:linear-gradient(135deg, var(--normal), #1a8f6c);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{ width:18px; height:18px; }
+
+  .brand-text h1{
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .brand-text p{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:1px;
+  }
+
+  .status-cluster{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    flex-wrap:wrap;
+  }
+
+  .status-item{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    align-items:flex-start;
+  }
+  .status-item .label{
+    font-size:10.5px;
+    color:var(--muted-dim);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .status-item .value{
+    font-size:13px;
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  .conn-pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 12px;
+    border-radius:20px;
+    background:var(--normal-dim);
+    border:1px solid rgba(52,217,160,0.35);
+    font-size:12.5px;
+    font-family:'JetBrains Mono', monospace;
+    color:var(--normal);
+  }
+  .conn-pill.off{
+    background:var(--warning-dim);
+    border-color:rgba(255,92,92,0.35);
+    color:var(--warning);
+  }
+  .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:currentColor;
+    box-shadow:0 0 0 3px currentColor22;
+  }
+  .dot.pulse{ animation:dotpulse 1.6s ease-in-out infinite; }
+  @keyframes dotpulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+
+  /* ---------- Hero / risk banner ---------- */
+  .hero{
+    position:relative;
+    border-radius:14px;
+    border:1px solid var(--hairline);
+    background:var(--panel);
+    overflow:hidden;
+    margin-bottom:18px;
+    transition:border-color .5s ease, box-shadow .5s ease;
+  }
+
+  .hero.state-elevated{ border-color:rgba(242,184,75,0.4); }
+  .hero.state-high{
+    border-color:rgba(255,92,92,0.55);
+    box-shadow:0 0 0 1px rgba(255,92,92,0.15), 0 0 40px rgba(255,92,92,0.12);
+  }
+
+  .waveform{
+    width:100%;
+    height:70px;
+    display:block;
+    opacity:0.55;
+  }
+
+  .hero-body{
+    padding:8px 32px 30px;
+    text-align:center;
+  }
+
+  .alert-banner{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin:0 auto 18px;
+    max-width:520px;
+    padding:12px 20px;
+    border-radius:10px;
+    background:var(--warning-dim);
+    border:1px solid rgba(255,92,92,0.45);
+    color:#ffd7d7;
+  }
+  .alert-banner.show{ display:flex; animation:alertin .4s ease; }
+  @keyframes alertin{
+    from{ opacity:0; transform:translateY(-6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .alert-banner .a-title{ font-weight:600; font-size:14.5px; }
+  .alert-banner .a-sub{ font-size:12.5px; color:#f2b0b0; }
+
+  .risk-state-label{
+    font-size:13px;
+    letter-spacing:0.14em;
+    color:var(--muted);
+    margin-bottom:6px;
+    text-transform:uppercase;
+  }
+
+  .risk-score-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+
+  .risk-score-value{
+    font-family:'JetBrains Mono', monospace;
+    font-size:64px;
+    font-weight:700;
+    line-height:1;
+    color:var(--normal);
+    transition:color .4s ease;
+  }
+  .risk-score-value.elevated{ color:var(--elevated); }
+  .risk-score-value.high{ color:var(--warning); }
+  .risk-score-unit{
+    font-family:'JetBrains Mono', monospace;
+    font-size:22px;
+    color:var(--muted);
+  }
+
+  .risk-state-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 16px;
+    border-radius:20px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.05em;
+    background:var(--normal-dim);
+    color:var(--normal);
+    margin-bottom:14px;
+  }
+  .risk-state-chip.elevated{ background:var(--elevated-dim); color:var(--elevated); }
+  .risk-state-chip.high{ background:var(--warning-dim); color:var(--warning); }
+
+  .risk-bar-track{
+    width:100%;
+    max-width:480px;
+    height:8px;
+    margin:0 auto;
+    border-radius:6px;
+    background:var(--panel-alt);
+    overflow:hidden;
+    border:1px solid var(--hairline);
+  }
+  .risk-bar-fill{
+    height:100%;
+    width:12%;
+    border-radius:6px;
+    background:linear-gradient(90deg, var(--normal), #1a8f6c);
+    transition:width .6s ease, background .5s ease;
+  }
+  .risk-bar-fill.elevated{ background:linear-gradient(90deg, var(--elevated), #a9791f); }
+  .risk-bar-fill.high{ background:linear-gradient(90deg, var(--warning), #a92c2c); }
+
+  .disclaimer-tag{
+    margin-top:16px;
+    font-size:11.5px;
+    color:var(--muted-dim);
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- Grid sections ---------- */
+  .section-title{
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:26px 2px 10px;
+  }
+
+  .card-row{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:14px;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:12px;
+    padding:16px 18px;
+  }
+
+  .card-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .card-top .name{
+    font-size:12.5px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+  .card-top .icon{ font-size:15px; }
+
+  .card-reading{
+    font-family:'JetBrains Mono', monospace;
+    font-size:28px;
+    font-weight:600;
+  }
+  .card-reading .unit{
+    font-size:14px;
+    color:var(--muted);
+    font-weight:400;
+    margin-left:4px;
+  }
+  .card-sub{ font-size:11.5px; color:var(--muted-dim); margin-top:2px; }
+
+  .spark{ width:100%; height:44px; display:block; margin-top:10px; }
+
+  /* ---------- Trend chart (big) ---------- */
+  .trend-card{
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:12px;
+    padding:18px 20px 14px;
+    margin-top:14px;
+  }
+  .trend-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:8px;
+  }
+  .trend-head .t-title{ font-size:13px; color:var(--muted); }
+  .trend-legend{ display:flex; gap:14px; font-size:11px; color:var(--muted-dim); }
+  .trend-legend span{ display:flex; align-items:center; gap:5px; }
+  .leg-dot{ width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  .risk-timeline{
+    width:100%;
+    height:140px;
+    display:block;
+  }
+
+  /* ---------- Sensor connection strip ---------- */
+  .sensor-strip{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    margin-top:14px;
+  }
+  .sensor-chip{
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    padding:12px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .sensor-chip .s-name{ font-size:13px; }
+  .sensor-chip .s-status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    padding:3px 9px;
+    border-radius:12px;
+    background:var(--normal-dim);
+    color:var(--normal);
+  }
+  .sensor-chip .s-status.off{ background:var(--warning-dim); color:var(--warning); }
+
+  /* ---------- Event log ---------- */
+  .event-card{
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:12px;
+    padding:6px 0;
+    margin-top:14px;
+    max-height:230px;
+    overflow-y:auto;
+  }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left;
+    font-size:11px;
+    color:var(--muted-dim);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    padding:10px 20px 8px;
+    position:sticky; top:0;
+    background:var(--panel);
+  }
+  tbody td{
+    padding:9px 20px;
+    font-size:13px;
+    border-top:1px solid var(--hairline);
+  }
+  tbody td.evt-time{ font-family:'JetBrains Mono', monospace; color:var(--muted); width:110px; }
+  .evt-badge{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:10px;
+    font-size:11.5px;
+    background:var(--normal-dim); color:var(--normal);
+  }
+  .evt-badge.elevated{ background:var(--elevated-dim); color:var(--elevated); }
+  .evt-badge.high{ background:var(--warning-dim); color:var(--warning); }
+
+  /* ---------- AI contract panel ---------- */
+  .contract-card{
+    background:var(--panel-alt);
+    border:1px dashed var(--hairline);
+    border-radius:12px;
+    padding:14px 18px;
+    margin-top:14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .contract-card pre{ white-space:pre-wrap; color:#9fd8c4; }
+
+  /* ---------- Controls ---------- */
+  .controls{
+    margin-top:26px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    padding:12px 24px;
+    border-radius:10px;
+    border:1px solid var(--hairline);
+    background:var(--panel);
+    color:var(--text);
+    cursor:pointer;
+    transition:transform .15s ease, border-color .2s ease, background .2s ease;
+  }
+  button:hover{ transform:translateY(-1px); border-color:var(--muted); }
+  button:active{ transform:translateY(0); }
+  button.primary{
+    background:linear-gradient(135deg, var(--normal), #1a8f6c);
+    color:#04140f;
+    border:none;
+  }
+  button.primary:disabled{
+    opacity:0.5;
+    cursor:default;
+    transform:none;
+  }
+  button.ghost{ background:transparent; }
+
+  .footer-note{
+    text-align:center;
+    margin-top:22px;
+    font-size:11.5px;
+    color:var(--muted-dim);
+  }
+
+  .demo-flag{
+    display:none;
+    text-align:center;
+    margin-top:14px;
+  }
+  .demo-flag.show{ display:block; }
+  .demo-flag span{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:#f2b0b0;
+    background:var(--warning-dim);
+    padding:6px 14px;
+    border-radius:20px;
+    border:1px solid rgba(255,92,92,0.35);
+  }
+
+  @media (max-width:980px){
+    .card-row{ grid-template-columns:repeat(2, 1fr); }
+  }
+  @media (max-width:820px){
+    .card-row{ grid-template-columns:1fr; }
+    .sensor-strip{ grid-template-columns:1fr; }
+    .status-cluster{ gap:14px; }
+    .risk-score-value{ font-size:48px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- A. Top status bar -->
+  <div class="statusbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 12h4l2 7 4-14 2 7h8" stroke="#04140f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Seizure Risk Monitor</h1>
+        <p>Personalized multimodal wearable — research prototype</p>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <div class="status-item">
+        <span class="label">Time</span>
+        <span class="value mono" id="clock">--:--:--</span>
+      </div>
+      <div class="status-item">
+        <span class="label">Last update</span>
+        <span class="value mono" id="lastUpdate">--:--:--</span>
+      </div>
+      <div class="status-item">
+        <span class="label">Device</span>
+        <span class="value mono" id="deviceId">EPI-WEAR-04</span>
+      </div>
+      <div class="conn-pill" id="connPill">
+        <span class="dot pulse" id="connDot"></span>
+        <span id="connText">DEVICE CONNECTED</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- B/C. Risk hero -->
+  <div class="hero" id="hero">
+    <svg class="waveform" viewBox="0 0 1000 70" preserveAspectRatio="none" id="waveformSvg">
+      <polyline id="waveformLine" fill="none" stroke="#34d9a0" stroke-width="1.6" points=""/>
+    </svg>
+    <div class="hero-body">
+      <div class="alert-banner" id="alertBanner">
+        <div>
+          <div class="a-title">⚠️ Early warning — increased seizure-risk pattern detected</div>
+          <div class="a-sub">Prototype demonstration — not a medical diagnosis</div>
+        </div>
+      </div>
+
+      <div class="risk-state-label">Estimated seizure-risk state</div>
+      <div class="risk-score-row">
+        <span class="risk-score-value" id="riskScoreValue">12</span>
+        <span class="risk-score-unit">%</span>
+      </div>
+      <div class="risk-state-chip" id="riskStateChip">
+        <span id="riskStateDot" class="dot"></span>
+        <span id="riskStateText">NORMAL</span>
+      </div>
+      <div class="risk-bar-track">
+        <div class="risk-bar-fill" id="riskBarFill"></div>
+      </div>
+      <div class="disclaimer-tag">Prototype risk estimate — not a validated clinical probability, and not a seizure diagnosis.</div>
+    </div>
+  </div>
+
+  <div class="demo-flag" id="demoFlag"><span>TEST / PRE-SEIZURE DEMONSTRATION STREAM</span></div>
+
+  <!-- D/E. Trained model input signals -->
+  <div class="section-title">Live signals</div>
+  <div class="card-row">
+    <div class="card">
+      <div class="card-top">
+        <span class="name"><span class="icon">❤️</span> Heart rate · MAX30102</span>
+      </div>
+      <div class="card-reading"><span id="hrValue">72</span><span class="unit">BPM</span></div>
+      <div class="card-sub" id="hrSub">Within personal baseline</div>
+      <svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none"><polyline id="hrSpark" fill="none" stroke="#34d9a0" stroke-width="1.8" points=""/></svg>
+    </div>
+    <div class="card">
+      <div class="card-top">
+        <span class="name"><span class="icon">💓</span> HRV · MAX30102</span>
+      </div>
+      <div class="card-reading"><span id="hrvValue">48</span><span class="unit">ms</span></div>
+      <div class="card-sub" id="hrvSub">Within personal baseline</div>
+      <svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none"><polyline id="hrvSpark" fill="none" stroke="#34d9a0" stroke-width="1.8" points=""/></svg>
+    </div>
+    <div class="card">
+      <div class="card-top">
+        <span class="name"><span class="icon">🏃</span> Movement · MPU6050 accel</span>
+      </div>
+      <div class="card-reading"><span id="moveValue">0.18</span><span class="unit">g rms</span></div>
+      <div class="card-sub" id="moveSub">Activity: resting</div>
+      <svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none"><polyline id="moveSpark" fill="none" stroke="#34d9a0" stroke-width="1.8" points=""/></svg>
+    </div>
+    <div class="card">
+      <div class="card-top">
+        <span class="name"><span class="icon">🔄</span> Rotation · MPU6050 gyro</span>
+      </div>
+      <div class="card-reading"><span id="rotValue">6</span><span class="unit">°/s</span></div>
+      <div class="card-sub" id="rotSub">Stable orientation</div>
+      <svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none"><polyline id="rotSpark" fill="none" stroke="#34d9a0" stroke-width="1.8" points=""/></svg>
+    </div>
+  </div>
+
+  <!-- F. Risk trend -->
+  <div class="section-title">Risk trend</div>
+  <div class="trend-card">
+    <div class="trend-head">
+      <span class="t-title">Deviation from personalized baseline over time</span>
+      <div class="trend-legend">
+        <span><i class="leg-dot" style="background:#34d9a0"></i>Normal</span>
+        <span><i class="leg-dot" style="background:#f2b84b"></i>Elevated</span>
+        <span><i class="leg-dot" style="background:#ff5c5c"></i>High</span>
+      </div>
+    </div>
+    <svg class="risk-timeline" viewBox="0 0 1000 140" preserveAspectRatio="none" id="timelineSvg"></svg>
+  </div>
+
+  <!-- H. Sensor connection -->
+  <div class="section-title">Sensor connection</div>
+  <div class="sensor-strip">
+    <div class="sensor-chip"><span class="s-name">ESP32 gateway</span><span class="s-status" id="s-esp32">CONNECTED</span></div>
+    <div class="sensor-chip"><span class="s-name">MAX30102 (HR/HRV)</span><span class="s-status" id="s-ppg">ACTIVE</span></div>
+    <div class="sensor-chip"><span class="s-name">MPU6050 (accel + gyro)</span><span class="s-status" id="s-mpu">ACTIVE</span></div>
+  </div>
+
+  <!-- G. Event log -->
+  <div class="section-title">Recent events</div>
+  <div class="event-card">
+    <table>
+      <thead><tr><th>Time</th><th>Event</th></tr></thead>
+      <tbody id="eventBody"></tbody>
+    </table>
+  </div>
+
+  <!-- AI contract -->
+  <div class="contract-card">
+    <div>Model output received by dashboard (read-only contract)</div>
+    <pre id="contractJson">{ "risk_state": "NORMAL", "risk_score": 0.12, "timestamp": "--" }</pre>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="primary" id="demoBtn">▶️ Start demo</button>
+    <button class="ghost" id="liveBtn">Live mode</button>
+    <button class="ghost" id="resetBtn">Reset</button>
+  </div>
+  <div class="footer-note">Research prototype for hackathon demonstration — not a medical diagnosis, and not a validated seizure predictor.</div>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  // ---------- Clock ----------
+  function fmtTime(d){
+    return d.toTimeString().slice(0,8);
+  }
+  function tickClock(){
+    $('clock').textContent = fmtTime(new Date());
+  }
+  setInterval(tickClock, 1000);
+  tickClock();
+
+  function setLastUpdate(){
+    $('lastUpdate').textContent = fmtTime(new Date());
+  }
+
+  // ---------- Data buffers ----------
+  const BUF_LEN = 60;
+  const hrBuf = Array(BUF_LEN).fill(72);
+  const hrvBuf = Array(BUF_LEN).fill(48);
+  const moveBuf = Array(BUF_LEN).fill(0.18);
+  const rotBuf = Array(BUF_LEN).fill(6);
+  const waveBuf = Array(100).fill(0);
+  const riskHistory = []; // { score, state }
+
+  function pushBuf(buf, val){
+    buf.push(val);
+    if (buf.length > BUF_LEN) buf.shift();
+  }
+
+  function sparkPoints(buf, w, h, pad){
+    const min = Math.min(...buf), max = Math.max(...buf);
+    const range = (max - min) || 1;
+    return buf.map((v,i)=>{
+      const x = (i/(buf.length-1)) * w;
+      const y = h - pad - ((v-min)/range) * (h - pad*2);
+      return x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+  }
+
+  function renderSparks(){
+    $('hrSpark').setAttribute('points', sparkPoints(hrBuf, 300, 44, 4));
+    $('hrvSpark').setAttribute('points', sparkPoints(hrvBuf, 300, 44, 4));
+    $('moveSpark').setAttribute('points', sparkPoints(moveBuf, 300, 44, 4));
+    $('rotSpark').setAttribute('points', sparkPoints(rotBuf, 300, 44, 4));
+  }
+
+  function renderWaveform(){
+    const w = 1000, h = 70, mid = h/2;
+    const pts = waveBuf.map((v,i)=>{
+      const x = (i/(waveBuf.length-1)) * w;
+      const y = mid - v;
+      return x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+    $('waveformLine').setAttribute('points', pts);
+  }
+
+  function pushWave(intensity){
+    // simple synthetic pulse waveform: baseline + spike pattern
+    for(let i=0;i<4;i++){
+      const t = waveBuf.length;
+      const spike = (t % 14 === 0) ? intensity*22 : 0;
+      const noise = (Math.random()-0.5) * intensity * 4;
+      waveBuf.push(spike + noise);
+      waveBuf.shift();
+    }
+    renderWaveform();
+  }
+
+  // ---------- Risk timeline (SVG) ----------
+  function colorForState(state){
+    if (state === 'HIGH') return '#ff5c5c';
+    if (state === 'ELEVATED') return '#f2b84b';
+    return '#34d9a0';
+  }
+
+  function renderTimeline(){
+    const svg = $('timelineSvg');
+    svg.innerHTML = '';
+    const w = 1000, h = 140, pad = 14;
+    const n = riskHistory.length;
+    if (n < 2){
+      // baseline flat line
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',0); line.setAttribute('x2',w);
+      line.setAttribute('y1',h-pad); line.setAttribute('y2',h-pad);
+      line.setAttribute('stroke','#232c35'); line.setAttribute('stroke-width','1');
+      svg.appendChild(line);
+      return;
+    }
+    const maxPts = 90;
+    const data = riskHistory.slice(-maxPts);
+    const stepX = w / (maxPts - 1);
+    const startIdx = maxPts - data.length;
+
+    // grid line
+    const grid = document.createElementNS('http://www.w3.org/2000/svg','line');
+    grid.setAttribute('x1',0); grid.setAttribute('x2',w);
+    grid.setAttribute('y1',h-pad); grid.setAttribute('y2',h-pad);
+    grid.setAttribute('stroke','#1a2129'); grid.setAttribute('stroke-width','1');
+    svg.appendChild(grid);
+
+    for(let i=0;i<data.length-1;i++){
+      const x1 = (startIdx+i) * stepX;
+      const x2 = (startIdx+i+1) * stepX;
+      const y1 = h - pad - (data[i].score/100)*(h-pad*2);
+      const y2 = h - pad - (data[i+1].score/100)*(h-pad*2);
+      const seg = document.createElementNS('http://www.w3.org/2000/svg','line');
+      seg.setAttribute('x1',x1); seg.setAttribute('y1',y1);
+      seg.setAttribute('x2',x2); seg.setAttribute('y2',y2);
+      seg.setAttribute('stroke', colorForState(data[i+1].state));
+      seg.setAttribute('stroke-width','2.4');
+      seg.setAttribute('stroke-linecap','round');
+      svg.appendChild(seg);
+    }
+    // last point marker
+    const last = data[data.length-1];
+    const lx = (startIdx+data.length-1) * stepX;
+    const ly = h - pad - (last.score/100)*(h-pad*2);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',lx); dot.setAttribute('cy',ly); dot.setAttribute('r','4.5');
+    dot.setAttribute('fill', colorForState(last.state));
+    svg.appendChild(dot);
+  }
+
+  // ---------- Event log ----------
+  function addEvent(label, state){
+    const tbody = $('eventBody');
+    const tr = document.createElement('tr');
+    const badgeClass = state === 'HIGH' ? 'high' : state === 'ELEVATED' ? 'elevated' : '';
+    tr.innerHTML = `<td class="evt-time">${fmtTime(new Date())}</td>
+      <td><span class="evt-badge ${badgeClass}">${label}</span></td>`;
+    tbody.prepend(tr);
+    while (tbody.children.length > 12) tbody.removeChild(tbody.lastChild);
+  }
+
+  // ---------- Real device / OS notifications on HIGH risk ----------
+  // Tracks the previous state so the notification fires once per new
+  // HIGH event, not on every single update while it stays HIGH.
+  let lastNotifiedState = 'NORMAL';
+  let notificationsReady = false;
+
+  async function initNotifications(){
+    // Path A: running inside a Capacitor-wrapped native app.
+    // (Requires: npm install @capacitor/local-notifications, then npx cap sync)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
+      try{
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        const perm = await LocalNotifications.requestPermissions();
+        notificationsReady = perm.display === 'granted';
+      }catch(e){
+        console.warn('LocalNotifications permission request failed:', e);
+      }
+      return;
+    }
+    // Path B: running as a plain webpage (e.g. testing in a browser,
+    // or before the Capacitor wrap is done). Uses the standard Web
+    // Notification API so the alert still works during development.
+    if ('Notification' in window){
+      try{
+        const perm = await Notification.requestPermission();
+        notificationsReady = perm === 'granted';
+      }catch(e){
+        console.warn('Notification permission request failed:', e);
+      }
+    }
+  }
+
+  async function fireHighRiskNotification(score){
+    const title = '⚠️ Early Warning';
+    const body = `Increased seizure-risk pattern detected (score ${score}%). Prototype demonstration — not a medical diagnosis.`;
+
+    // Native app path (Capacitor)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
+      try{
+        await window.Capacitor.Plugins.LocalNotifications.schedule({
+          notifications: [{
+            id: Date.now() % 100000,
+            title,
+            body,
+            schedule: { at: new Date(Date.now() + 100) }
+          }]
+        });
+      }catch(e){
+        console.warn('Failed to schedule native notification:', e);
+      }
+      // Optional haptic buzz alongside the notification, if the
+      // Haptics plugin has been added (npm install @capacitor/haptics)
+      if (window.Capacitor.Plugins.Haptics){
+        try{ window.Capacitor.Plugins.Haptics.vibrate(); }catch(e){}
+      }
+      return;
+    }
+
+    // Browser fallback path
+    if (notificationsReady && 'Notification' in window){
+      try{ new Notification(title, { body }); }catch(e){ console.warn('Notification failed:', e); }
+    }
+  }
+
+  // ---------- Core state application ----------
+  function applyRisk(score, state){
+    score = Math.round(score);
+    $('riskScoreValue').textContent = score;
+    $('riskStateText').textContent = state;
+
+    const scoreEl = $('riskScoreValue');
+    const chip = $('riskStateChip');
+    const bar = $('riskBarFill');
+    const hero = $('hero');
+    const banner = $('alertBanner');
+
+    scoreEl.classList.remove('elevated','high');
+    chip.classList.remove('elevated','high');
+    bar.classList.remove('elevated','high');
+    hero.classList.remove('state-elevated','state-high');
+
+    if (state === 'ELEVATED'){
+      scoreEl.classList.add('elevated');
+      chip.classList.add('elevated');
+      bar.classList.add('elevated');
+      hero.classList.add('state-elevated');
+    } else if (state === 'HIGH'){
+      scoreEl.classList.add('high');
+      chip.classList.add('high');
+      bar.classList.add('high');
+      hero.classList.add('state-high');
+    }
+
+    bar.style.width = Math.max(6, score) + '%';
+    banner.classList.toggle('show', state === 'HIGH');
+
+    // Fire a real OS/device notification only on the transition INTO
+    // HIGH (not on every tick while it stays HIGH), so the user isn't
+    // spammed with repeat alerts for the same ongoing event.
+    if (state === 'HIGH' && lastNotifiedState !== 'HIGH'){
+      fireHighRiskNotification(score);
+    }
+    lastNotifiedState = state;
+
+    riskHistory.push({score, state});
+    renderTimeline();
+
+    $('contractJson').textContent =
+      `{ "risk_state": "${state}", "risk_score": ${(score/100).toFixed(2)}, "timestamp": "${new Date().toISOString()}" }`;
+
+    setLastUpdate();
+  }
+
+  // ---------- Ambient idle simulation (pre-demo baseline) ----------
+  let idleTimer = null;
+  function idleTick(){
+    const hr = 70 + Math.round((Math.random()-0.5)*4);
+    const hrv = 47 + Math.round((Math.random()-0.5)*6);
+    const mv = +(0.16 + (Math.random()-0.5)*0.04).toFixed(2);
+    const rot = 6 + Math.round((Math.random()-0.5)*3);
+    pushBuf(hrBuf, hr); pushBuf(hrvBuf, hrv); pushBuf(moveBuf, mv); pushBuf(rotBuf, rot);
+    $('hrValue').textContent = hr;
+    $('hrvValue').textContent = hrv;
+    $('moveValue').textContent = mv;
+    $('rotValue').textContent = rot;
+    renderSparks();
+    pushWave(1);
+    setLastUpdate();
+  }
+
+  function startIdle(){
+    if (idleTimer) return;
+    idleTick();
+    applyRisk(12, 'NORMAL');
+    idleTimer = setInterval(idleTick, 1400);
+  }
+  function stopIdle(){
+    clearInterval(idleTimer);
+    idleTimer = null;
+  }
+
+  // ---------- Demo sequence ----------
+  let demoRunning = false;
+
+  function runDemo(){
+    if (demoRunning) return;
+    demoRunning = true;
+    stopIdle();
+    $('demoBtn').disabled = true;
+    $('demoBtn').textContent = 'Demo running…';
+    riskHistory.length = 0;
+    $('eventBody').innerHTML = '';
+
+    const steps = [
+      // t, hr, hrv, move, rot, score, state, intensity, event label, showFlag
+      {t:0,    hr:71, hrv:49, mv:0.17, rot:6,  score:10, state:'NORMAL',   inten:1,  evt:'Normal',                         flag:false},
+      {t:1500, hr:73, hrv:47, mv:0.19, rot:7,  score:14, state:'NORMAL',   inten:1,  evt:'Normal',                         flag:false},
+      {t:3000, hr:75, hrv:45, mv:0.20, rot:8,  score:18, state:'NORMAL',   inten:1.1,evt:'Normal',                         flag:false},
+      {t:4600, hr:80, hrv:39, mv:0.26, rot:14, score:35, state:'ELEVATED', inten:1.4,evt:'Elevated risk',                  flag:true},
+      {t:6200, hr:88, hrv:32, mv:0.34, rot:22, score:48, state:'ELEVATED', inten:1.7,evt:'Pattern change detected',        flag:true},
+      {t:7800, hr:97, hrv:25, mv:0.46, rot:34, score:63, state:'ELEVATED', inten:2.1,evt:'Increased movement detected',    flag:true},
+      {t:9400, hr:108,hrv:18, mv:0.58, rot:49, score:78, state:'HIGH',     inten:2.6,evt:'Sustained deviation from baseline', flag:true},
+      {t:11000,hr:118,hrv:12, mv:0.66, rot:61, score:87, state:'HIGH',     inten:3.1,evt:'Early warning triggered',        flag:true},
+    ];
+
+    steps.forEach(s=>{
+      setTimeout(()=>{
+        pushBuf(hrBuf, s.hr); pushBuf(hrvBuf, s.hrv); pushBuf(moveBuf, s.mv); pushBuf(rotBuf, s.rot);
+        $('hrValue').textContent = s.hr;
+        $('hrvValue').textContent = s.hrv;
+        $('moveValue').textContent = s.mv;
+        $('rotValue').textContent = s.rot;
+        $('hrSub').textContent = s.state === 'NORMAL' ? 'Within personal baseline' : 'Deviating from baseline';
+        $('hrvSub').textContent = s.hrv > 40 ? 'Within personal baseline' : s.hrv > 20 ? 'Dropping below baseline' : 'Sharp drop from baseline';
+        $('moveSub').textContent = s.mv < 0.25 ? 'Activity: resting' : s.mv < 0.5 ? 'Activity: restless movement' : 'Activity: pronounced movement change';
+        $('rotSub').textContent = s.rot < 15 ? 'Stable orientation' : s.rot < 40 ? 'Increased rotational movement' : 'Rapid orientation change';
+        renderSparks();
+        pushWave(s.inten);
+        applyRisk(s.score, s.state);
+        addEvent(s.evt, s.state);
+        $('demoFlag').classList.toggle('show', s.flag);
+      }, s.t);
+    });
+
+    setTimeout(()=>{
+      demoRunning = false;
+      $('demoBtn').disabled = false;
+      $('demoBtn').textContent = '▶️ Start demo';
+    }, steps[steps.length-1].t + 1200);
+  }
+
+  // ---------- Live mode (stub — no hardware attached) ----------
+  let livePolling = null;
+
+function tryLiveMode(){
+  setConnection(true);
+  addEvent('Connected to backend — polling /risk', 'NORMAL');
+  stopIdle();
+  if (livePolling) return;
+  livePolling = setInterval(fetchRisk, 2000);
+  fetchRisk();
+}
+
+async function fetchRisk(){
+  try{
+    const res = await fetch('http://127.0.0.1:5000/risk');
+    const d = await res.json();
+    $('hrValue').textContent = d.hr;
+    pushBuf(hrBuf, d.hr);
+    renderSparks();
+    const scoreMap = { Normal: 15, Elevated: 50, High: 85 };
+    applyRisk(scoreMap[d.status] ?? 15, d.status.toUpperCase());
+    addEvent(`Backend: ${d.status}`, d.status.toUpperCase());
+  }catch(e){
+    addEvent('Backend unreachable', 'NORMAL');
+    console.warn(e);
+  }
+}
+
+  function setConnection(connected){
+    const pill = $('connPill'), dot = $('connDot'), txt = $('connText');
+    pill.classList.toggle('off', !connected);
+    txt.textContent = connected ? 'DEVICE CONNECTED' : 'DEVICE DISCONNECTED';
+    ['s-esp32','s-ppg','s-mpu'].forEach(id=>{
+      const el = $(id);
+      el.classList.toggle('off', !connected);
+      el.textContent = connected ? (id==='s-esp32'?'CONNECTED':'ACTIVE') : 'OFFLINE';
+    });
+  }
+
+  function resetAll(){
+    stopIdle();
+    demoRunning = false;
+    $('demoBtn').disabled = false;
+    $('demoBtn').textContent = '▶️ Start demo';
+    $('demoFlag').classList.remove('show');
+    $('alertBanner').classList.remove('show');
+    riskHistory.length = 0;
+    $('eventBody').innerHTML = '';
+    setConnection(true);
+    hrBuf.fill(72); hrvBuf.fill(48); moveBuf.fill(0.18); rotBuf.fill(6);
+    lastNotifiedState = 'NORMAL';
+    startIdle();
+    addEvent('Session reset', 'NORMAL');
+  }
+
+  // ---------- Wire up ----------
+  $('demoBtn').addEventListener('click', runDemo);
+  $('liveBtn').addEventListener('click', tryLiveMode);
+  $('resetBtn').addEventListener('click', resetAll);
+
+  // init
+  renderTimeline();
+  addEvent('Session started', 'NORMAL');
+  initNotifications();
+  startIdle();
+})();
+</script>
+
+</body>
+</html>
